@@ -180,7 +180,10 @@ async function sendToAI() {
       target: currentTarget.value,
       command: commandText.value
     }
-    const res = await fetch('/api/ai', {
+    
+    // 修改为读取环境变量
+    const baseUrl = import.meta.env.VITE_API_BASE_URL
+    const res = await fetch(`${baseUrl}/api/ai`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
