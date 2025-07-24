@@ -5,21 +5,12 @@
     <!-- 用户指令 与 模板选择 -->
     <div class="row mb-3">
       <div class="col-md-6">
-        <input
-          v-model="commandText"
-          type="text"
-          class="form-control"
-          placeholder="user command (e.g., modify text)"
-        />
+        <input v-model="commandText" type="text" class="form-control" placeholder="user command (e.g., modify text)" />
       </div>
       <div class="col-md-6">
         <select v-model="selectedFile" class="form-select">
           <option value="">— choose a file —</option>
-          <option
-            v-for="f in fileList"
-            :key="f"
-            :value="f"
-          >{{ f }}</option>
+          <option v-for="f in fileList" :key="f" :value="f">{{ f }}</option>
         </select>
       </div>
     </div>
@@ -30,12 +21,7 @@
         <label class="form-label">
           Prompt used to generate the chosen file
         </label>
-        <textarea
-          class="form-control"
-          rows="3"
-          style="height: 110px;"
-          readonly
-        >{{ templatePrompt }}</textarea>
+        <textarea class="form-control" rows="3" style="height: 110px;" readonly>{{ templatePrompt }}</textarea>
       </div>
     </div>
 
@@ -49,11 +35,7 @@
         <div class="input-group">
           <span class="input-group-text">Target</span>
           <select v-model="currentTarget" class="form-select">
-            <option
-              v-for="t in targetOptions"
-              :key="t"
-              :value="t"
-            >{{ t }}</option>
+            <option v-for="t in targetOptions" :key="t" :value="t">{{ t }}</option>
           </select>
         </div>
       </div>
@@ -63,12 +45,7 @@
     <div class="row">
       <div class="col-md-6 mb-3">
         <label class="form-label">HTML editor</label>
-        <textarea
-          v-model="htmlCode"
-          class="form-control"
-          rows="20"
-          style="height: 600px;"
-        ></textarea>
+        <textarea v-model="htmlCode" class="form-control" rows="20" style="height: 600px;"></textarea>
       </div>
       <div class="col-md-6 mb-3">
         <label class="form-label">Chart preview</label>
@@ -78,29 +55,17 @@
 
     <!-- 发送 AI 按钮、复制 & 填充 按钮 与 AI 返回 -->
     <div class="mb-4">
-      <button
-        class="btn btn-warning w-100 mb-3"
-        :disabled="loadingAI"
-        @click="sendToAI"
-      >
+      <button class="btn btn-warning w-100 mb-3" :disabled="loadingAI" @click="sendToAI">
         {{ loadingAI
           ? 'Waiting for the AI’s response.'
           : 'send (1) html (2) interaction (3) user command to AI' }}
       </button>
 
       <div class="d-flex gap-2 mb-3">
-        <button
-          class="btn btn-outline-secondary flex-fill"
-          :disabled="!aiResponse"
-          @click="copyAIResponse"
-        >
+        <button class="btn btn-outline-secondary flex-fill" :disabled="!aiResponse" @click="copyAIResponse">
           📋 Copy AI response
         </button>
-        <button
-          class="btn btn-outline-success flex-fill"
-          :disabled="!aiResponse"
-          @click="pasteToEditor"
-        >
+        <button class="btn btn-outline-success flex-fill" :disabled="!aiResponse" @click="pasteToEditor">
           🔄 Paste to HTML editor
         </button>
       </div>
@@ -158,9 +123,10 @@ const targetOptions = [
 // 加载 templates.json 与 prompts.json
 onMounted(async () => {
   try {
+    const base = import.meta.env.BASE_URL
     const [tplRes, prmRes] = await Promise.all([
-      fetch('/templates.json'),
-      fetch('/prompts.json')
+      fetch(`${base}templates.json`),
+      fetch(`${base}prompts.json`)
     ])
     fileList.value = await tplRes.json()
     promptsMap.value = await prmRes.json()
