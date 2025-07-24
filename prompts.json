@@ -1,0 +1,14 @@
+{
+  "basic.html": "none",
+  "basicWithLegend.html": "none",
+  "XLabelTextEdit.html": "(1)\n basic.html\n (2)interaction: click; target: X axis label (click on X axis label)\n (3) \"modify text\"",
+  "YLabelEdit.html": "(1)\n basic.html\n (2)interaction: click; target: Y axis label (click on Y axis label)\n (3) \"modify text to change the data\"",
+  "YLabelTextEdit.html": "(1)\n basic.html\n (2)interaction: click; target: Y axis label (click on Y axis label)\n (3) \"modify text\"",
+  "barWidth.html": "(1)\n basic.html\n (2)interaction: click; target: bar (click on bar)\n (3) \"modify bars' width\"",
+  "barWidth2.html": "(1)\n basic.html\n (2)interaction: click; target: bar (click on bar)\n (3) \"modify width\"",
+  "scaleRange.html": "(1)\n basic.html\n (2)interaction: click; target: Y axis(click on Y axis)\n (3) \"modify scale range\"",
+  "colorFilter.html": "(1)\n basic.html\n (2)interaction: click; target: bar(click on bar)\n (3) \"color by name and fiter by color\"",
+  "legendFilter.html": "(1)\n basicWithLegend.html\n (2)interaction: click; target: legend(click on legend)\n (3) \"filter\"",
+  "LegendColor.html": "(1)\n basicWithLegend.html\n (2)interaction: click; target: legend(click on legend)\n (3) \"modify color\"",
+  "barColor.html": "(1)\n basic.html\n (2)interaction: click; target: bar(click on bar)\n (3) \"modify color\""
+}

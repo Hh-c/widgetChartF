@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D3 Bar Chart with Axis Labels</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    .bar {
+      transition: fill 0.3s;
+      cursor: pointer;
+    }
+
+    .bar:hover {
+      stroke: #333;
+      stroke-width: 2px;
+    }
+
+    .axis text {
+      font-size: 12px;
+    }
+
+    .axis-label {
+      font-size: 14px;
+      font-weight: bold;
+      text-anchor: middle;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+
+    .axis-label-input {
+      font-size: 14px;
+      position: absolute;
+      z-index: 10;
+      border: 1px solid #888;
+      border-radius: 3px;
+      padding: 2px 4px;
+      outline: none;
+    }
+
+    .widget-container {
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .widget-label {
+      font-weight: 500;
+      margin-right: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-container" id="color-filter-widget"></div>
+  <svg width="600" height="400"></svg>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    // ==== Chart Setup ====
+    const svg = d3.select("svg"),
+          width = +svg.attr("width"),
+          height = +svg.attr("height"),
+          margin = { top: 20, right: 30, bottom: 60, left: 60 },
+          chartWidth  = width  - margin.left - margin.right,
+          chartHeight = height - margin.top  - margin.bottom;
+
+    // Assign automatic color mapping to each name
+    const nameColorDomain = [
+      "#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+      "#ff7f00", "#ffff33", "#a65628", "#f781bf"
+    ];
+    const data = [
+      { name: "A", value: 30 , value2: 50 },
+      { name: "B", value: 80 , value2: 20 },
+      { name: "C", value: 45 , value2: 70 },
+      { name: "D", value: 60 , value2: 40 },
+      { name: "E", value: 20 , value2: 90 },
+      { name: "F", value: 90 , value2: 30 },
+      { name: "G", value: 55 , value2: 80 },
+      { name: "H", value: 70 , value2: 60 }
+    ];
+
+    const uniqueNames = data.map(d => d.name);
+    const colorScale = d3.scaleOrdinal()
+      .domain(uniqueNames)
+      .range(nameColorDomain);
+
+    let filteredColors = new Set(uniqueNames.map(n => colorScale(n)));
+
+    // --- Build Color Filter Widget ---
+    const widgetDiv = d3.select("#color-filter-widget");
+    widgetDiv.append("span")
+      .attr("class", "widget-label")
+      .text("Filter bars by color:");
+
+    const colorOptions = uniqueNames.map(name => ({
+      name,
+      color: colorScale(name)
+    }));
+
+    // Checkbox filter
+    const checkboxG = widgetDiv.append("span");
+    colorOptions.forEach(opt => {
+      const id = `filter-color-${opt.name}`;
+      const boxSpan = checkboxG.append("span")
+        .style("margin-right","11px")
+        .style("display","inline-flex")
+        .style("align-items","center");
+
+      boxSpan.append("input")
+        .attr("type", "checkbox")
+        .attr("id", id)
+        .attr("checked", true)
+        .attr("data-color", opt.color)
+        .style("margin-right", "3px")
+        .on("change", function() {
+          const color = this.getAttribute("data-color");
+          if (this.checked) {
+            filteredColors.add(color);
+          } else {
+            filteredColors.delete(color);
+          }
+          drawBars();
+        });
+      boxSpan.append("span")
+        .style("display","inline-block")
+        .style("width","13px")
+        .style("height","13px")
+        .style("background", opt.color)
+        .style("border","1px solid #888")
+        .style("margin-right","3px")
+        .style("border-radius","3px");
+
+      boxSpan.append("label")
+        .attr("for", id)
+        .style("font-size","12px")
+        .text(opt.name);
+    });
+
+    // --- Build Chart ---
+    const x = d3.scaleBand()
+                .domain(data.map(d => d.name))
+                .range([0, chartWidth])
+                .padding(0.1);
+
+    const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.value)])
+                .nice()
+                .range([chartHeight, 0]);
+
+    const g = svg.append("g")
+                 .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    g.append("g")
+     .attr("class", "axis x-axis")
+     .attr("transform", `translate(0,${chartHeight})`)
+     .call(d3.axisBottom(x));
+
+    g.append("g")
+     .attr("class", "axis y-axis")
+     .call(d3.axisLeft(y));
+
+    // Y Axis Label
+    svg.append("text")
+       .attr("class", "axis-label")
+       .attr("transform", "rotate(-90)")
+       .attr("x", -height / 2)
+       .attr("y", 20)
+       .text("value");
+
+    // X Axis Label
+    let xAxisLabel = svg.append("text")
+      .attr("class", "axis-label x-label")
+      .attr("x", width / 2)
+      .attr("y", height - 10)
+      .text("name");
+
+    function drawBars() {
+      // data join
+      const bars = g.selectAll(".bar")
+        .data(data.filter(d => filteredColors.has(colorScale(d.name))), d => d.name);
+
+      // exit
+      bars.exit()
+        .transition().duration(250)
+        .attr("y", y(0))
+        .attr("height", 0)
+        .style("opacity", 0)
+        .remove();
+
+      // update
+      bars
+        .transition().duration(250)
+        .attr("x", d => x(d.name))
+        .attr("y", d => y(d.value))
+        .attr("width", x.bandwidth())
+        .attr("height", d => chartHeight - y(d.value))
+        .attr("fill", d => colorScale(d.name))
+        .style("opacity", 1);
+
+      // enter
+      bars.enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", d => x(d.name))
+        .attr("y", y(0))
+        .attr("width", x.bandwidth())
+        .attr("height", 0)
+        .attr("fill", d => colorScale(d.name))
+        .on("click", function(event, d) {
+          // Optionally, highlight clicked bar or perform further actions below
+          // For now, just flash the bar
+          d3.select(this)
+            .transition().duration(150)
+            .attr("fill", "#000")
+            .transition().duration(400)
+            .attr("fill", colorScale(d.name));
+        })
+        .transition().duration(400)
+        .attr("y", d => y(d.value))
+        .attr("height", d => chartHeight - y(d.value));
+    }
+
+    // Initial rendering
+    drawBars();
+  </script>
+</body>
+</html>
