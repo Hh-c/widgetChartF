@@ -3,14 +3,13 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
-  // 在 GitHub Pages 上发布时，需要将 base 设置为仓库名或自定义域名路径
-  base: '/widgetChart/',
+  // 发布到 https://jh.github.io/widgetChartF/ 时的公共路径
+  base: '/widgetChartF/',
 
   plugins: [vue()],
 
   server: {
     proxy: {
-      // 本地开发时，将 /api 请求代理到本地 Flask 服务
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
@@ -19,6 +18,7 @@ export default defineConfig({
     }
   }
 })
+
 
 
 // 先尝试通过下面两个case跑通pipeline：

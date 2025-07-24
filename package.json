@@ -1,12 +1,12 @@
 {
-  "name": "vuethreeproject",
-  "private": true,
-  "version": "0.0.0",
+  "name": "widgetchartf",
+  "private": false,
+  "version": "0.0.1",
   "type": "module",
-  "homepage": "https://jh.github.io/widgetChart",
+  "homepage": "https://Hh-c.github.io/widgetChartF",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jh/widgetChart.git"
+    "url": "https://github.com/Hh-c/widgetChartF"
   },
   "scripts": {
     "dev": "vite",
