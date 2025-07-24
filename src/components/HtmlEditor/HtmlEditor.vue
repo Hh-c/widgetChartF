@@ -150,7 +150,8 @@ watch(selectedFile, async file => {
     return
   }
   try {
-    htmlCode.value = await fetch(`/${file}`).then(r => r.text())
+    const base = import.meta.env.BASE_URL
+    htmlCode.value = await fetch(`${base}${file}`).then(r => r.text())
     templatePrompt.value = promptsMap.value[file] || ''
   } catch (e) {
     console.error(`加载模板 ${file} 失败`, e)
