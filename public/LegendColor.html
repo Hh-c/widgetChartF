@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D3 Bar Chart with Legend by Category</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    .bar {
+      transition: fill 0.3s;
+    }
+
+    .bar:hover {
+      opacity: 0.8;
+    }
+
+    .axis text {
+      font-size: 12px;
+    }
+
+    .axis-label {
+      font-size: 14px;
+      font-weight: bold;
+      text-anchor: middle;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+
+    .legend {
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .legend rect {
+      stroke: #000;
+      stroke-width: 1px;
+      cursor: pointer;
+    }
+    .color-picker-wrapper {
+      position: absolute;
+      z-index: 1000;
+      display: none;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 4px 8px 4px 4px;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.14);
+    }
+    .color-picker-label {
+      font-size: 12px;
+      margin-right: 3px;
+    }
+  </style>
+</head>
+<body>
+  <svg width="600" height="400"></svg>
+  <div id="color-picker" class="color-picker-wrapper">
+    <span class="color-picker-label">Choose color:</span>
+    <input type="color" id="color-input" />
+  </div>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    const svg = d3.select("svg"),
+          width = +svg.attr("width"),
+          height = +svg.attr("height"),
+          margin = { top: 20, right: 150, bottom: 60, left: 60 },
+          chartWidth  = width  - margin.left - margin.right,
+          chartHeight = height - margin.top  - margin.bottom;
+
+    const data = [
+      { name: "A", value: 30 , value2: 50 , category: "X" },
+      { name: "B", value: 80 , value2: 20 , category: "Y" },
+      { name: "C", value: 45 , value2: 70 , category: "X" },
+      { name: "D", value: 60 , value2: 40 , category: "Y" },
+      { name: "E", value: 20 , value2: 90 , category: "X" },
+      { name: "F", value: 90 , value2: 30 , category: "Y" },
+      { name: "G", value: 55 , value2: 80 , category: "X" },
+      { name: "H", value: 70 , value2: 60 , category: "Y" }
+    ];
+
+    const x = d3.scaleBand()
+                .domain(data.map(d => d.name))
+                .range([0, chartWidth])
+                .padding(0.1);
+
+    const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.value)]).nice()
+                .range([chartHeight, 0]);
+
+    const categories = Array.from(new Set(data.map(d => d.category)));
+    let categoryColors = d3.schemeCategory10.slice(0, categories.length);
+    const color = d3.scaleOrdinal()
+                    .domain(categories)
+                    .range(categoryColors);
+
+    const g = svg.append("g")
+                 .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    g.append("g")
+     .attr("class", "axis x-axis")
+     .attr("transform", `translate(0,${chartHeight})`)
+     .call(d3.axisBottom(x));
+
+    g.append("g")
+     .attr("class", "axis y-axis")
+     .call(d3.axisLeft(y));
+
+    g.selectAll(".bar")
+     .data(data)
+     .enter().append("rect")
+       .attr("class", "bar")
+       .attr("x", d => x(d.name))
+       .attr("y", d => y(d.value))
+       .attr("width", x.bandwidth())
+       .attr("height", d => chartHeight - y(d.value))
+       .attr("fill", d => color(d.category))
+       .attr("data-category", d => d.category);
+
+    svg.append("text")
+       .attr("class", "axis-label")
+       .attr("transform", "rotate(-90)")
+       .attr("x", -height / 2)
+       .attr("y", 20)
+       .text("value");
+
+    svg.append("text")
+       .attr("class", "axis-label x-label")
+       .attr("x", margin.left + chartWidth / 2)
+       .attr("y", height - 10)
+       .text("name");
+
+    // Legend
+    const legend = svg.append("g")
+      .attr("class", "legend")
+      .attr("transform", `translate(${margin.left + chartWidth + 20}, ${margin.top})`);
+
+    const legendItems = [];
+    categories.forEach((cat, i) => {
+      const row = legend.append("g")
+        .attr("class", "legend-item")
+        .attr("data-category", cat)
+        .attr("transform", `translate(0, ${i * 25})`);
+
+      // Rect block
+      row.append("rect")
+         .attr("width", 18)
+         .attr("height", 18)
+         .attr("fill", color(cat));
+
+      // Text label
+      row.append("text")
+         .attr("x", 24)
+         .attr("y", 9)
+         .attr("dy", "0.35em")
+         .text(cat);
+
+      legendItems.push(row);
+    });
+
+    // Color picker widget logic
+    const colorPickerDiv = document.getElementById('color-picker');
+    const colorInput = document.getElementById('color-input');
+    let pickerCurrentCategory = null;
+
+    // Helper: Get bounding box position for an SVG element relative to page
+    function svgElementPagePosition(element) {
+      // getBoundingClientRect gives us position in client coordinates
+      const rect = element.getBoundingClientRect();
+      // Get scroll offset of the html page
+      const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+      const scrollTop  = window.pageYOffset || document.documentElement.scrollTop;
+      return {
+        left: rect.left + scrollLeft,
+        top: rect.top + scrollTop,
+        width: rect.width,
+        height: rect.height
+      };
+    }
+
+    // Show color picker when legend swatch is clicked
+    d3.selectAll('.legend-item rect')
+      .on('click', function(event, d) {
+        event.stopPropagation();
+        const svgBox = svgElementPagePosition(this);
+        colorPickerDiv.style.display = 'block';
+        colorPickerDiv.style.left = (svgBox.left + svgBox.width + 8) + 'px';
+        colorPickerDiv.style.top = (svgBox.top - 2) + 'px';
+
+        // Which category?
+        pickerCurrentCategory = d3.select(this.parentNode).attr('data-category');
+        colorInput.value = rgbToHex(d3.color(d3.select(this).attr('fill')));
+        colorInput.focus();
+      });
+
+    // On color changed
+    colorInput.onchange = function() {
+      if (!pickerCurrentCategory) return;
+      // Update color scale range and rebind to color
+      const idx = categories.indexOf(pickerCurrentCategory);
+      if (idx !== -1) {
+        categoryColors[idx] = colorInput.value;
+        color.range(categoryColors);
+      }
+
+      // Update legend
+      d3.selectAll(`.legend-item[data-category='${pickerCurrentCategory}'] rect`)
+        .attr('fill', colorInput.value);
+      // Update bars
+      d3.selectAll(`.bar[data-category='${pickerCurrentCategory}']`)
+        .attr('fill', colorInput.value);
+
+      colorPickerDiv.style.display = 'none';
+      pickerCurrentCategory = null;
+    };
+
+    // Dismiss color picker when clicking elsewhere
+    document.addEventListener('mousedown', function(e) {
+      if (!colorPickerDiv.contains(e.target)) {
+        colorPickerDiv.style.display = 'none';
+        pickerCurrentCategory = null;
+      }
+    });
+
+    // Helper for converting rgb to hex
+    function rgbToHex(colorObj) {
+      if (!colorObj) return '#000000';
+      const r = colorObj.r.toString(16).padStart(2, '0'),
+            g = colorObj.g.toString(16).padStart(2, '0'),
+            b = colorObj.b.toString(16).padStart(2, '0');
+      return `#${r}${g}${b}`;
+    }
+  </script>
+</body>
+</html>

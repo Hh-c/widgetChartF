@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D3 Bar Chart with Axis Labels</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    .bar {
+      fill: steelblue;
+      transition: fill 0.3s;
+    }
+
+    .bar:hover {
+      fill: orange;
+    }
+
+    .axis text {
+      font-size: 12px;
+    }
+
+    .axis-label {
+      font-size: 14px;
+      font-weight: bold;
+      text-anchor: middle;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+
+    .axis-label-input {
+      font-size: 14px;
+      position: absolute;
+      z-index: 10;
+      border: 1px solid #888;
+      border-radius: 3px;
+      padding: 2px 4px;
+      outline: none;
+    }
+
+    .color-picker-widget {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1px solid #aaa;
+      border-radius: 4px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+      padding: 4px 8px;
+      z-index: 1000;
+      animation: fadein 0.15s;
+    }
+    @keyframes fadein {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .color-picker-widget label {
+      font-size: 13px;
+      color: #222;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <svg width="600" height="400"></svg>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    const svg = d3.select("svg"),
+          width = +svg.attr("width"),
+          height = +svg.attr("height"),
+          margin = { top: 20, right: 30, bottom: 60, left: 60 },
+          chartWidth  = width  - margin.left - margin.right,
+          chartHeight = height - margin.top  - margin.bottom;
+
+    const data = [
+      { name: "A", value: 30 , value2: 50 , category: "X" },
+      { name: "B", value: 80 , value2: 20 , category: "Y" },
+      { name: "C", value: 45 , value2: 70 , category: "X" },
+      { name: "D", value: 60 , value2: 40 , category: "Y" },
+      { name: "E", value: 20 , value2: 90 , category: "X" },
+      { name: "F", value: 90 , value2: 30 , category: "Y" },
+      { name: "G", value: 55 , value2: 80 , category: "X" },
+      { name: "H", value: 70 , value2: 60 , category: "Y" }
+    ];
+
+    const x = d3.scaleBand()
+                .domain(data.map(d => d.name))
+                .range([0, chartWidth])
+                .padding(0.1);
+
+    const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.value)])
+                .nice()
+                .range([chartHeight, 0]);
+
+    const g = svg.append("g")
+                 .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // X Axis
+    g.append("g")
+     .attr("class", "axis x-axis")
+     .attr("transform", `translate(0,${chartHeight})`)
+     .call(d3.axisBottom(x));
+
+    // Y Axis
+    g.append("g")
+     .attr("class", "axis y-axis")
+     .call(d3.axisLeft(y));
+
+    // Bars
+    g.selectAll(".bar")
+     .data(data)
+     .enter().append("rect")
+       .attr("class", "bar")
+       .attr("x", d => x(d.name))
+       .attr("y", d => y(d.value))
+       .attr("width", x.bandwidth())
+       .attr("height", d => chartHeight - y(d.value))
+       .each(function(d) {
+          d.__barFill = "steelblue"; // Initial fill cache for user color
+       });
+
+    // Y Axis Label
+    svg.append("text")
+       .attr("class", "axis-label")
+       .attr("transform", "rotate(-90)")
+       .attr("x", -height / 2)
+       .attr("y", 20)
+       .text("value");
+
+    // X Axis Label
+    let xAxisLabel = svg.append("text")
+      .attr("class", "axis-label x-label")
+      .attr("x", width / 2)
+      .attr("y", height - 10)
+      .text("name");
+
+    // --- BEGIN COLOR PICKER WIDGET INJECTION ---
+    let colorPickerDiv;
+
+    // Remove any previous widget
+    function removeColorPicker() {
+      if (colorPickerDiv) {
+        colorPickerDiv.remove();
+        colorPickerDiv = null;
+        document.removeEventListener('mousedown', colorPickerOutsideHandler, true);
+      }
+    }
+
+    // Handle click outside the color picker to close it
+    function colorPickerOutsideHandler(event) {
+      if (colorPickerDiv && !colorPickerDiv.node().contains(event.target)) {
+        removeColorPicker();
+      }
+    }
+
+    // Attach click handler to bars to pop up color input
+    g.selectAll(".bar").on("click", function(event, d) {
+      d3.event && d3.event.stopPropagation && d3.event.stopPropagation();
+      event && event.stopPropagation && event.stopPropagation();
+
+      removeColorPicker();
+
+      // Get position of the rect in SVG, transform to screen position
+      const rect = d3.select(this);
+      const matrix = this.getScreenCTM();
+      const svgRect = this.getBBox();
+      // Place popup at bar top (screen coords)
+      const point = svg.node().createSVGPoint();
+      point.x = svgRect.x + svgRect.width / 2;
+      point.y = svgRect.y;
+      const pos = point.matrixTransform(matrix);
+
+      colorPickerDiv = d3.select("body")
+        .append("div")
+        .attr("class", "color-picker-widget")
+        .style("left", (pos.x - 60) + "px") // Center picker over bar
+        .style("top", (pos.y - 34) + "px");
+
+      colorPickerDiv.html(`
+        <label for="bar-color-input">Color: </label>
+        <input type="color" id="bar-color-input" value="${rgbToHex(rect.style("fill") || d.__barFill)}" style="width:28px;height:28px;padding:0;border:none;background:transparent;vertical-align:middle;"/>
+      `);
+
+      // Listen for color change
+      colorPickerDiv.select("#bar-color-input").on("input", function() {
+        const newColor = this.value;
+        rect.style("fill", newColor);
+        d.__barFill = newColor;
+      });
+
+      // Attach handler to close widget when clicking outside
+      setTimeout(() => {
+        document.addEventListener('mousedown', colorPickerOutsideHandler, true);
+      }, 20);
+    });
+
+    // Remove color picker on esc
+    document.addEventListener('keydown', function(event) {
+      if (event.key === "Escape") removeColorPicker();
+    });
+
+    // Helper: RGB string to HEX
+    function rgbToHex(rgb) {
+      if (!rgb) return "#4682b4"; // default steelblue
+      if (rgb.startsWith("#")) return rgb;
+      // e.g. "rgb(70, 130, 180)"
+      const parts = rgb.replace(/rgba?\(/, '').replace(')', '').split(',').map(v => parseInt(v,10));
+      if (parts.length < 3) return "#4682b4";
+      return "#" + parts.slice(0,3).map(x=>(x<16?"0":"")+x.toString(16)).join('');
+    }
+
+    // --- END WIDGET INJECTION ---
+  </script>
+</body>
+</html>

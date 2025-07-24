@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D3 Bar Chart with Axis Labels</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    .bar {
+      fill: steelblue;
+      transition: fill 0.3s;
+    }
+
+    .bar:hover {
+      fill: orange;
+    }
+
+    .axis text {
+      font-size: 12px;
+    }
+
+    .axis-label {
+      font-size: 14px;
+      font-weight: bold;
+      text-anchor: middle;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+
+    .axis-label-input {
+      font-size: 14px;
+      position: absolute;
+      z-index: 10;
+      border: 1px solid #888;
+      border-radius: 3px;
+      padding: 2px 4px;
+      outline: none;
+    }
+    .range-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      margin-left: 64px;
+    }
+    .range-controls label {
+      font-size:13px;
+    }
+    .range-controls input[type="number"] {
+      width:64px;
+      padding:2px 4px;
+      font-size:13px;
+    }
+    .range-controls button {
+      padding:2px 8px;
+      font-size:13px;
+      cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="range-controls" id="y-range-controls">
+    <label for="y-min-input">Y Min:</label>
+    <input type="number" id="y-min-input" value="0" step="1">
+    <label for="y-max-input">Y Max:</label>
+    <input type="number" id="y-max-input" value="90" step="1">
+    <button type="button" id="y-range-apply">Apply</button>
+  </div>
+  <svg width="600" height="400"></svg>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    const svg = d3.select("svg"),
+          width = +svg.attr("width"),
+          height = +svg.attr("height"),
+          margin = { top: 20, right: 30, bottom: 60, left: 60 },
+          chartWidth  = width  - margin.left - margin.right,
+          chartHeight = height - margin.top  - margin.bottom;
+
+    const data = [
+      { name: "A", value: 30 , value2: 50 },
+      { name: "B", value: 80 , value2: 20 },
+      { name: "C", value: 45 , value2: 70 },
+      { name: "D", value: 60 , value2: 40 },
+      { name: "E", value: 20 , value2: 90 },
+      { name: "F", value: 90 , value2: 30 },
+      { name: "G", value: 55 , value2: 80 },
+      { name: "H", value: 70 , value2: 60 }
+    ];
+
+    const x = d3.scaleBand()
+                .domain(data.map(d => d.name))
+                .range([0, chartWidth])
+                .padding(0.1);
+
+    // Initial domain
+    let yMin = 0;
+    let yMax = d3.max(data, d => d.value);
+
+    let y = d3.scaleLinear()
+                .domain([yMin, yMax])
+                .nice()
+                .range([chartHeight, 0]);
+
+    const g = svg.append("g")
+                 .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // X Axis
+    const xAxisG = g.append("g")
+      .attr("class", "axis x-axis")
+      .attr("transform", `translate(0,${chartHeight})`)
+      .call(d3.axisBottom(x));
+
+    // Y Axis
+    const yAxisG = g.append("g")
+      .attr("class", "axis y-axis")
+      .call(d3.axisLeft(y));
+
+    // Bars
+    let bars = g.selectAll(".bar")
+     .data(data)
+     .enter().append("rect")
+       .attr("class", "bar")
+       .attr("x", d => x(d.name))
+       .attr("y", d => y(d.value))
+       .attr("width", x.bandwidth())
+       .attr("height", d => chartHeight - y(d.value));
+
+    // Y Axis Label
+    svg.append("text")
+       .attr("class", "axis-label")
+       .attr("transform", "rotate(-90)")
+       .attr("x", -height / 2)
+       .attr("y", 20)
+       .text("value");
+
+    // X Axis Label
+    let xAxisLabel = svg.append("text")
+      .attr("class", "axis-label x-label")
+      .attr("x", width / 2)
+      .attr("y", height - 10)
+      .text("name");
+
+    // Widget logic for modifying Y scale range
+    const minInput = document.getElementById('y-min-input');
+    const maxInput = document.getElementById('y-max-input');
+    const applyBtn = document.getElementById('y-range-apply');
+
+    function updateYScale(newMin, newMax) {
+      y.domain([+newMin, +newMax]).nice();
+      // Update Y axis
+      yAxisG.transition().duration(600).call(d3.axisLeft(y));
+      // Update Bars
+      bars.transition()
+        .duration(600)
+        .attr("y", d => y(d.value))
+        .attr("height", d => chartHeight - y(d.value));
+    }
+
+    // Set initial input values to current y domain
+    minInput.value = yMin;
+    maxInput.value = yMax;
+
+    function clampInputs() {
+      let vmin = Number(minInput.value);
+      let vmax = Number(maxInput.value);
+      if (isNaN(vmin)) vmin = 0;
+      if (isNaN(vmax)) vmax = d3.max(data, d => d.value);
+      if (vmax < vmin + 1) vmax = vmin + 1;
+      minInput.value = vmin;
+      maxInput.value = vmax;
+    }
+
+    applyBtn.addEventListener('click', function() {
+      clampInputs();
+      let newMin = Number(minInput.value);
+      let newMax = Number(maxInput.value);
+      updateYScale(newMin, newMax);
+    });
+
+    // Optional: Enter key triggers Apply
+    minInput.addEventListener('keydown', function(e) { if(e.key=="Enter") applyBtn.click(); });
+    maxInput.addEventListener('keydown', function(e) { if(e.key=="Enter") applyBtn.click(); });
+
+    // --- END WIDGET INJECTION ---
+  </script>
+</body>
+</html>

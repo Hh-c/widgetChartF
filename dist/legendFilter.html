@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D3 Bar Chart with Legend by Category</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    .bar {
+      transition: fill 0.3s;
+    }
+
+    .bar:hover {
+      opacity: 0.8;
+    }
+
+    .axis text {
+      font-size: 12px;
+    }
+
+    .axis-label {
+      font-size: 14px;
+      font-weight: bold;
+      text-anchor: middle;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+
+    .legend {
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .legend rect {
+      stroke: #000;
+      stroke-width: 1px;
+    }
+    .legend-filter-checkbox {
+      vertical-align: middle;
+      margin-right: 2px;
+      cursor: pointer;
+    }
+    .legend-item.selected text {
+      font-weight: bold;
+    }
+    .legend-item.unselected text {
+      fill: #aaa;
+    }
+    .legend-item.unselected rect {
+      fill: #fff !important;
+      stroke: #aaa;
+    }
+    .legend-item.selected rect {
+      stroke: #000;
+    }
+  </style>
+</head>
+<body>
+  <svg width="600" height="400"></svg>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    const svg = d3.select("svg"),
+          width = +svg.attr("width"),
+          height = +svg.attr("height"),
+          margin = { top: 20, right: 150, bottom: 60, left: 60 },
+          chartWidth  = width  - margin.left - margin.right,
+          chartHeight = height - margin.top  - margin.bottom;
+
+    const data = [
+      { name: "A", value: 30 , value2: 50 , category: "X" },
+      { name: "B", value: 80 , value2: 20 , category: "Y" },
+      { name: "C", value: 45 , value2: 70 , category: "X" },
+      { name: "D", value: 60 , value2: 40 , category: "Y" },
+      { name: "E", value: 20 , value2: 90 , category: "X" },
+      { name: "F", value: 90 , value2: 30 , category: "Y" },
+      { name: "G", value: 55 , value2: 80 , category: "X" },
+      { name: "H", value: 70 , value2: 60 , category: "Y" }
+    ];
+
+    // 1. 定义 x, y 轴
+    let x = d3.scaleBand()
+                .domain(data.map(d => d.name))
+                .range([0, chartWidth])
+                .padding(0.1);
+
+    let y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.value)]).nice()
+                .range([chartHeight, 0]);
+
+    // 2. 定义类别颜色映射
+    const categories = Array.from(new Set(data.map(d => d.category)));
+    const color = d3.scaleOrdinal()
+                    .domain(categories)
+                    .range(d3.schemeCategory10);
+
+    // 追踪哪些 category 被选中
+    let activeCategories = {};
+    categories.forEach(cat => activeCategories[cat] = true);
+
+    // 3. 主绘图组
+    const g = svg.append("g")
+                 .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // X 轴
+    const xAxis = g.append("g")
+     .attr("class", "axis x-axis")
+     .attr("transform", `translate(0,${chartHeight})`);
+
+    // Y 轴
+    const yAxis = g.append("g")
+     .attr("class", "axis y-axis");
+
+    // 柱图组
+    const barsGroup = g.append("g")
+      .attr("class", "bars-group");
+
+    // Y 轴标签
+    svg.append("text")
+       .attr("class", "axis-label")
+       .attr("transform", "rotate(-90)")
+       .attr("x", -height / 2)
+       .attr("y", 20)
+       .text("value");
+
+    // X 轴标签
+    svg.append("text")
+       .attr("class", "axis-label x-label")
+       .attr("x", margin.left + chartWidth / 2)
+       .attr("y", height - 10)
+       .text("name");
+
+    // —— 图例 ——  
+    const legend = svg.append("g")
+      .attr("class", "legend")
+      .attr("transform", `translate(${margin.left + chartWidth + 20}, ${margin.top})`);
+
+    // 数据过滤并渲染函数
+    function updateChart() {
+      let filteredCategories = categories.filter(cat => activeCategories[cat]);
+      let filteredData = data.filter(d => filteredCategories.includes(d.category));
+
+      x.domain(filteredData.map(d=>d.name));
+      y.domain([0, d3.max(filteredData, d=>d.value)||1]).nice();
+
+      // 重绘x轴
+      xAxis.transition().duration(300)
+        .call(d3.axisBottom(x));
+
+      // 重绘y轴
+      yAxis.transition().duration(300)
+        .call(d3.axisLeft(y));
+      
+      // 数据绑定
+      let bars = barsGroup.selectAll(".bar")
+        .data(filteredData, d => d.name);
+
+      // 退出
+      bars.exit()
+        .transition().duration(300)
+        .attr("y", y(0))
+        .attr("height", 0)
+        .style("opacity", 0)
+        .remove();
+
+      // 更新
+      bars.transition().duration(300)
+        .attr("x", d => x(d.name))
+        .attr("y", d => y(d.value))
+        .attr("width", x.bandwidth())
+        .attr("height", d => chartHeight - y(d.value))
+        .attr("fill", d => color(d.category));
+
+      // 进入
+      bars.enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", d => x(d.name))
+        .attr("y", y(0))
+        .attr("width", x.bandwidth())
+        .attr("height", 0)
+        .attr("fill", d => color(d.category))
+        .style("opacity", 0)
+        .transition().duration(300)
+        .attr("y", d => y(d.value))
+        .attr("height", d => chartHeight - y(d.value))
+        .style("opacity", 1);
+    }
+
+    // 初次渲染
+    updateChart();
+
+    // 图例复选框
+    categories.forEach((cat, i) => {
+      const row = legend.append("g")
+        .attr("class", "legend-item selected")
+        .attr("data-category", cat)
+        .attr("transform", `translate(0, ${i * 28})`);
+
+      // 添加 checkbox
+      row.append("foreignObject")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", 24)
+        .attr("height", 22)
+        .html(`<input type="checkbox" class="legend-filter-checkbox" id="legend-filter-${cat}" checked />`);
+
+      // 彩块
+      row.append("rect")
+        .attr("x", 24)
+        .attr("y", 2)
+        .attr("width", 18)
+        .attr("height", 18)
+        .attr("fill", color(cat));
+
+      // 文本
+      row.append("text")
+        .attr("x", 48)
+        .attr("y", 11)
+        .attr("dy", "0.35em")
+        .text(cat);
+    });
+
+    // 交互：绑定checkbox事件
+    categories.forEach(cat => {
+      // 使用原生事件监听，因为checkbox在foreignObject里
+      document.getElementById(`legend-filter-${cat}`).addEventListener("change", function() {
+        activeCategories[cat] = this.checked;
+
+        // 更新 legend-item 状态
+        const row = legend.select(`g[data-category='${cat}']`);
+        row.classed("selected", this.checked);
+        row.classed("unselected", !this.checked);
+        
+        updateChart();
+      });
+    });
+
+  </script>
+</body>
+</html>

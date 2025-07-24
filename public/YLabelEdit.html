@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D3 Bar Chart with Axis Labels</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    .bar {
+      fill: steelblue;
+      transition: fill 0.3s;
+    }
+
+    .bar:hover {
+      fill: orange;
+    }
+
+    .axis text {
+      font-size: 12px;
+    }
+
+    .axis-label {
+      font-size: 14px;
+      font-weight: bold;
+      text-anchor: middle;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+
+    .axis-label-input {
+      font-size: 14px;
+      position: absolute;
+      z-index: 10;
+      border: 1px solid #888;
+      border-radius: 3px;
+      padding: 2px 4px;
+      outline: none;
+      width: 60px;
+      text-align: center;
+    }
+
+    .data-select-label {
+      margin-right: 5px;
+      font-size: 14px;
+      font-weight: normal;
+      vertical-align: middle;
+    }
+    .data-select-widget {
+      font-size: 14px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid #aaa;
+      vertical-align: middle;
+    }
+    #y-widget-container {
+      position: absolute;
+      z-index: 20;
+      background: white;
+      padding: 3px 4px;
+      border-radius: 3px;
+      border: 1px solid #ddd;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <svg width="600" height="400"></svg>
+
+  <div id="y-widget-container">
+    <label class="data-select-label" for="y-data-select">Y data:</label>
+    <select id="y-data-select" class="data-select-widget">
+      <option value="value">value</option>
+      <option value="value2">value2</option>
+    </select>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    const svg = d3.select("svg"),
+          width = +svg.attr("width"),
+          height = +svg.attr("height"),
+          margin = { top: 20, right: 30, bottom: 60, left: 60 },
+          chartWidth  = width  - margin.left - margin.right,
+          chartHeight = height - margin.top  - margin.bottom;
+
+    let data = [
+      { name: "A", value: 30 , value2: 50 },
+      { name: "B", value: 80 , value2: 20 },
+      { name: "C", value: 45 , value2: 70 },
+      { name: "D", value: 60 , value2: 40 },
+      { name: "E", value: 20 , value2: 90 },
+      { name: "F", value: 90 , value2: 30 },
+      { name: "G", value: 55 , value2: 80 },
+      { name: "H", value: 70 , value2: 60 }
+    ];
+
+    let yDataKey = "value";
+
+    const x = d3.scaleBand()
+                .domain(data.map(d => d.name))
+                .range([0, chartWidth])
+                .padding(0.1);
+
+    const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d[yDataKey])])
+                .nice()
+                .range([chartHeight, 0]);
+
+    const g = svg.append("g")
+                 .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // X Axis
+    g.append("g")
+     .attr("class", "axis x-axis")
+     .attr("transform", `translate(0,${chartHeight})`)
+     .call(d3.axisBottom(x));
+
+    // Y Axis group
+    const yAxisGroup = g.append("g")
+     .attr("class", "axis y-axis")
+     .call(d3.axisLeft(y));
+
+    // Bars
+    function renderBars(yKey) {
+      y.domain([0, d3.max(data, d => d[yKey])]).nice();
+
+      // Update y axis
+      yAxisGroup.transition().duration(350).call(d3.axisLeft(y));
+
+      let bars = g.selectAll(".bar")
+        .data(data, d=>d.name);
+
+      bars.enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", d => x(d.name))
+        .attr("width", x.bandwidth())
+        .attr("y", chartHeight)
+        .attr("height", 0)
+        .merge(bars)
+        .transition().duration(350)
+        .attr("x", d => x(d.name))
+        .attr("width", x.bandwidth())
+        .attr("y", d => y(d[yKey]))
+        .attr("height", d => chartHeight - y(d[yKey]));
+
+      bars.exit()
+        .transition().duration(350)
+        .attr("y", chartHeight)
+        .attr("height", 0)
+        .remove();
+    }
+
+    renderBars(yDataKey);
+
+    // Y Axis Label
+    let yAxisLabel = svg.append("text")
+       .attr("class", "axis-label y-label")
+       .attr("transform", "rotate(-90)")
+       .attr("x", -height / 2)
+       .attr("y", 20)
+       .attr("cursor", "pointer")
+       .text("value");
+
+    // X Axis Label
+    let xAxisLabel = svg.append("text")
+      .attr("class", "axis-label x-label")
+      .attr("x", width / 2)
+      .attr("y", height - 10)
+      .text("name");
+
+    // --- ADDED: Interactive widget on Y axis label click ---
+    // Utility: get SVG abs coords
+    function getSVGCoords(svgNode, x, y) {
+      const pt = svgNode.createSVGPoint();
+      pt.x = x; pt.y = y;
+      return pt.matrixTransform(svgNode.getScreenCTM());
+    }
+
+    function updateYAxisLabelText(key) {
+      let label = key === 'value' ? 'value' : (key === 'value2' ? 'value2' : key);
+      yAxisLabel.text(label);
+    }
+
+    // Widget elements
+    const yWidgetDiv = document.getElementById('y-widget-container');
+    const yDataSelect = document.getElementById('y-data-select');
+
+    yDataSelect.value = yDataKey;
+
+    yDataSelect.onchange = function() {
+      yDataKey = yDataSelect.value;
+      renderBars(yDataKey);
+      updateYAxisLabelText(yDataKey);
+    };
+
+    // Show widget on label click
+    yAxisLabel.on("click", function(event) {
+      event.stopPropagation();
+      // Compute screen position of Y axis label (<text> with rotate)
+      const svgNode = svg.node();
+      let abs = getSVGCoords(svgNode, +yAxisLabel.attr("y"), -yAxisLabel.attr("x"));
+      yWidgetDiv.style.left = Math.round(abs.x + 35) + "px";
+      yWidgetDiv.style.top = Math.round(abs.y - 18) + "px";
+      yWidgetDiv.style.display = "block";
+      yDataSelect.focus();
+    });
+
+    // Hide widget on click outside
+    document.addEventListener('mousedown', function(evt) {
+      if (
+        evt.target !== yWidgetDiv && 
+        !yWidgetDiv.contains(evt.target) && 
+        evt.target !== yAxisLabel.node()
+      ) {
+        yWidgetDiv.style.display = "none";
+      }
+    });
+
+    // Keyboard: hide widget on escape
+    yDataSelect.addEventListener("keydown", function(evt) {
+      if (evt.key === "Escape") yWidgetDiv.style.display = "none";
+    });
+
+    // Extra: keep y axis label in sync with selected data key
+    updateYAxisLabelText(yDataKey);
+    // --- END WIDGET INJECTION ---
+  </script>
+</body>
+</html>

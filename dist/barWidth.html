@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D3 Bar Chart with Axis Labels</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    .bar {
+      fill: steelblue;
+      transition: fill 0.3s;
+    }
+
+    .bar:hover {
+      fill: orange;
+    }
+
+    .axis text {
+      font-size: 12px;
+    }
+
+    .axis-label {
+      font-size: 14px;
+      font-weight: bold;
+      text-anchor: middle;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+
+    .axis-label-input {
+      font-size: 14px;
+      position: absolute;
+      z-index: 10;
+      border: 1px solid #888;
+      border-radius: 3px;
+      padding: 2px 4px;
+      outline: none;
+    }
+
+    .bar-width-control-container {
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+    }
+    .bar-width-slider {
+      width: 180px;
+      vertical-align: middle;
+    }
+    .bar-width-value {
+      min-width: 32px;
+      display: inline-block;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar-width-control-container">
+    <label for="bar-width-slider">Bar Width:</label>
+    <input type="range" min="10" max="100" value="52" id="bar-width-slider" class="bar-width-slider">
+    <span class="bar-width-value" id="bar-width-value">52</span>
+  </div>
+  <svg width="600" height="400"></svg>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    const svg = d3.select("svg"),
+          width = +svg.attr("width"),
+          height = +svg.attr("height"),
+          margin = { top: 20, right: 30, bottom: 60, left: 60 },
+          chartWidth  = width  - margin.left - margin.right,
+          chartHeight = height - margin.top  - margin.bottom;
+
+    const data = [
+      { name: "A", value: 30 , value2: 50 },
+      { name: "B", value: 80 , value2: 20 },
+      { name: "C", value: 45 , value2: 70 },
+      { name: "D", value: 60 , value2: 40 },
+      { name: "E", value: 20 , value2: 90 },
+      { name: "F", value: 90 , value2: 30 },
+      { name: "G", value: 55 , value2: 80 },
+      { name: "H", value: 70 , value2: 60 }
+    ];
+
+    // Initial bar width based on band scale
+    let bandWidth = chartWidth / data.length;
+    // Range for bar width slider
+    const minBarWidth = 10;
+    const maxBarWidth = Math.max(100, bandWidth);
+
+    // x scale, initialized and will be updated with bar width change
+    let x = d3.scaleBand()
+                .domain(data.map(d => d.name))
+                .range([0, chartWidth])
+                .padding(0.1);
+
+    const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.value)])
+                .nice()
+                .range([chartHeight, 0]);
+
+    const g = svg.append("g")
+                 .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // X Axis
+    const xAxisG = g.append("g")
+     .attr("class", "axis x-axis")
+     .attr("transform", `translate(0,${chartHeight})`)
+     .call(d3.axisBottom(x));
+
+    // Y Axis
+    g.append("g")
+     .attr("class", "axis y-axis")
+     .call(d3.axisLeft(y));
+
+    // Bars
+    let barsSelection = g.selectAll(".bar")
+     .data(data)
+     .enter().append("rect")
+       .attr("class", "bar")
+       .attr("x", d => x(d.name))
+       .attr("y", d => y(d.value))
+       .attr("width", x.bandwidth())
+       .attr("height", d => chartHeight - y(d.value));
+
+    // Y Axis Label
+    svg.append("text")
+       .attr("class", "axis-label")
+       .attr("transform", "rotate(-90)")
+       .attr("x", -height / 2)
+       .attr("y", 20)
+       .text("value");
+
+    // X Axis Label
+    let xAxisLabel = svg.append("text")
+      .attr("class", "axis-label x-label")
+      .attr("x", width / 2)
+      .attr("y", height - 10)
+      .text("name");
+
+    // --- Widget Logic: Bar Width Slider ---
+
+    // Set up initial bar width based on scale
+    const initialBarWidth = x.bandwidth();
+    const slider = document.getElementById('bar-width-slider');
+    const valueText = document.getElementById('bar-width-value');
+
+    slider.setAttribute('min', minBarWidth);
+    slider.setAttribute('max', maxBarWidth);
+    slider.value = Math.round(initialBarWidth);
+    valueText.textContent = Math.round(initialBarWidth);
+
+    function updateBarsWidth(newWidth) {
+      // Update band scale's bandwidth but not the domain/order/overall range
+      // We'll recenter the bars
+      const barSpacing = (chartWidth - (newWidth * data.length)) / (data.length + 1);
+      // New positions: start at offset, every bar has barSpacing on each left, except first has one extra at left
+      let xPos = [];
+      let acc = barSpacing;
+      for(let i=0;i<data.length;i++) {
+        xPos.push(acc);
+        acc += newWidth + barSpacing;
+      }
+
+      // Update bars
+      g.selectAll(".bar")
+        .data(data)
+        .attr("x", (d, i) => xPos[i])
+        .attr("width", newWidth);
+
+      // Update x axis ticks positions to align with bars
+      // Remove axis, redraw at new tick positions
+      g.select(".x-axis").call(
+        d3.axisBottom(
+          d3
+            .scaleOrdinal()
+            .domain(data.map(d => d.name))
+            .range(xPos.map(d => d + newWidth/2))
+        )
+      );
+    }
+
+    slider.addEventListener('input', function() {
+      const newWidth = Number(this.value);
+      valueText.textContent = newWidth;
+      updateBarsWidth(newWidth);
+    });
+
+    // On initial load, ensure correct positioning if scale's .bandwidth() > maxBarWidth
+    updateBarsWidth(Number(slider.value));
+    // --- END WIDGET INJECTION ---
+  </script>
+</body>
+</html>

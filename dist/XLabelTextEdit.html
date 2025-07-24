@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>D3 Bar Chart with Axis Labels</title>
+
+  <style>
+
+    body {
+
+      font-family: sans-serif;
+
+      padding: 20px;
+
+    }
+
+
+
+    .bar {
+
+      fill: steelblue;
+
+      transition: fill 0.3s;
+
+    }
+
+
+
+    .bar:hover {
+
+      fill: orange;
+
+    }
+
+
+
+    .axis text {
+
+      font-size: 12px;
+
+    }
+
+
+
+    .axis-label {
+
+      font-size: 14px;
+
+      font-weight: bold;
+
+      text-anchor: middle;
+
+    }
+
+
+
+    .axis path,
+
+    .axis line {
+
+      fill: none;
+
+      stroke: #000;
+
+      shape-rendering: crispEdges;
+
+    }
+
+
+
+    .axis-label-input {
+
+      font-size: 14px;
+
+      position: absolute;
+
+      z-index: 10;
+
+      border: 1px solid #888;
+
+      border-radius: 3px;
+
+      padding: 2px 4px;
+
+      outline: none;
+
+      box-sizing: border-box;
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <!-- <h2>D3.js 带轴标签的条形图示例</h2> -->
+
+  <svg width="600" height="400"></svg>
+
+
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <script>
+
+    const svg = d3.select("svg"),
+
+          width = +svg.attr("width"),
+
+          height = +svg.attr("height"),
+
+          margin = { top: 20, right: 30, bottom: 60, left: 60 },
+
+          chartWidth  = width  - margin.left - margin.right,
+
+          chartHeight = height - margin.top  - margin.bottom;
+
+
+
+    const data = [
+
+      { name: "A", value: 30 , value2: 50 },
+
+      { name: "B", value: 80 , value2: 20 },
+
+      { name: "C", value: 45 , value2: 70 },
+
+      { name: "D", value: 60 , value2: 40 },
+
+      { name: "E", value: 20 , value2: 90 },
+
+      { name: "F", value: 90 , value2: 30 },
+
+      { name: "G", value: 55 , value2: 80 },
+
+      { name: "H", value: 70 , value2: 60 }
+
+    ];
+
+
+
+    const x = d3.scaleBand()
+
+                .domain(data.map(d => d.name))
+
+                .range([0, chartWidth])
+
+                .padding(0.1);
+
+
+
+    const y = d3.scaleLinear()
+
+                .domain([0, d3.max(data, d => d.value)])
+
+                .nice()
+
+                .range([chartHeight, 0]);
+
+
+
+    const g = svg.append("g")
+
+                 .attr("transform", `translate(${margin.left},${margin.top})`);
+
+
+
+    // X Axis
+
+    g.append("g")
+
+     .attr("class", "axis x-axis")
+
+     .attr("transform", `translate(0,${chartHeight})`)
+
+     .call(d3.axisBottom(x));
+
+
+
+    // Y Axis
+
+    g.append("g")
+
+     .attr("class", "axis y-axis")
+
+     .call(d3.axisLeft(y));
+
+
+
+    // Bars
+
+    g.selectAll(".bar")
+
+     .data(data)
+
+     .enter().append("rect")
+
+       .attr("class", "bar")
+
+       .attr("x", d => x(d.name))
+
+       .attr("y", d => y(d.value))
+
+       .attr("width", x.bandwidth())
+
+       .attr("height", d => chartHeight - y(d.value));
+
+
+
+    // Y Axis Label
+
+    svg.append("text")
+
+       .attr("class", "axis-label")
+
+       .attr("transform", "rotate(-90)")
+
+       .attr("x", -height / 2)
+
+       .attr("y", 20)
+
+       .text("value");
+
+
+
+    // X Axis Label
+
+    let xAxisLabel = svg.append("text")
+
+      .attr("class", "axis-label x-label")
+
+      .attr("x", width / 2)
+
+      .attr("y", height - 10)
+
+      .text("name")
+
+      .style("cursor", "pointer");
+
+
+
+    // Widget: text input for x axis label
+
+    let inputBox = null;
+
+
+
+    function showXAxisInput() {
+
+      if (inputBox) return; // Already open
+
+
+
+      const labelNode = xAxisLabel.node();
+
+      const svgRect = svg.node().getBoundingClientRect();
+
+      const labelRect = labelNode.getBoundingClientRect();
+
+
+
+      // Calculate position for input (try to match svg label position in page coordinates)
+
+      const left = labelRect.left;
+
+      const top = labelRect.top;
+
+
+
+      inputBox = document.createElement('input');
+
+      inputBox.type = 'text';
+
+      inputBox.value = xAxisLabel.text();
+
+      inputBox.className = 'axis-label-input';
+
+
+
+      // Set reasonable width based on text length
+
+      inputBox.style.width = Math.max(60, inputBox.value.length * 12 + 20) + 'px';
+
+
+
+      // Position the input above the label (centered horizontally)
+
+      inputBox.style.position = 'absolute';
+
+      inputBox.style.left = (window.scrollX + left - (inputBox.offsetWidth/2) + labelRect.width/2) + "px";
+
+      inputBox.style.top = (window.scrollY + top - 2) + "px";
+
+
+
+      // Sync size and location ONE tick later to ensure offsetWidth after attachment
+
+      document.body.appendChild(inputBox);
+
+
+
+      function positionInput() {
+
+        // recalculate centered position
+
+        inputBox.style.width = Math.max(60, inputBox.value.length * 12 + 20) + 'px';
+
+        inputBox.style.left = (window.scrollX + labelRect.left + labelRect.width/2 - inputBox.offsetWidth/2) + "px";
+
+        inputBox.style.top = (window.scrollY + labelRect.top - 2) + "px";
+
+      }
+
+      positionInput();
+
+
+
+      inputBox.select();
+
+
+
+      // update label on input
+
+      inputBox.addEventListener('input', function() {
+
+        xAxisLabel.text(this.value);
+
+        positionInput();
+
+      });
+
+
+
+      // Remove input on blur or Enter key
+
+      function finishEdit() {
+
+        if (inputBox) {
+
+          xAxisLabel.text(inputBox.value);
+
+          document.body.removeChild(inputBox);
+
+          inputBox = null;
+
+        }
+
+      }
+
+      inputBox.addEventListener('blur', finishEdit);
+
+      inputBox.addEventListener('keydown', function(e) {
+
+        if (e.key === 'Enter') {
+
+          finishEdit();
+
+        } else if (e.key === 'Escape') {
+
+          if(inputBox) {
+
+            document.body.removeChild(inputBox);
+
+            inputBox = null;
+
+          }
+
+        }
+
+      });
+
+    }
+
+
+
+    xAxisLabel.on('click', showXAxisInput);
+
+  </script>
+
+</body>
+
+</html>
